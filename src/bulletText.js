@@ -42,9 +42,9 @@
                 }
             }
         },
-        limitBytes: function(str, length) {
+        limitBytes: function(str) {
             var totalLength = 0;
-            var charCode, tmp;
+            var charCode;
             for (var i = 0; i < str.length; i++) {
                 charCode = str.charCodeAt(i);
                 if (charCode <= 0x007f) {
@@ -56,12 +56,12 @@
                 } else {
                     totalLength += 4;
                 }
-                if(totalLength > length){
-                    tmp = str.substring(0, i-1);
+                if(totalLength > options.charLimit){
+                    str = str.substring(0, i-1);
                     break;
                 }
             }
-            return tmp;
+            return str;
         }
     },
     w = {
@@ -70,7 +70,7 @@
     tmpl = {
         track: '<div class="bulletT-track"></div>',
         // text: '<span class="bulletT-text" style="margin-left:{{left}};">{{text}}</span>',
-        text: '<span class="bulletT-text ready" style="transition:{{trst}}; left:{{left}}">{{text}}</span>',
+        text: '<span class="bulletT-text ready" style="transition:{{trst}}; left:{{left}}" data-initTime="{{initTime}}">{{text}}</span>',
     },
     options = {
         container: '#bulletArea',
@@ -81,46 +81,82 @@
         speed: 5000, // ms
         spacing: 10, // px
     },
-    lineState: {
+    lineState = {
         list: [],
         getAvailTrackIndex: function(){
             var t = [];
             for(var i=0; i<this.list.length; i++){
-                this.list[i] && t.push(i);
+                this.list[i] < (+new Date) && t.push(i);
             }
             return t;
         }
     },
-    dom: {
+    dom = {
         tracks: [],
+        stylesheet: '.bulletT-track{position:relative;} .bulletT-text{position:absolute; white-space:nowrap; z-index: 10;}',
     }
     pendingBullets = [];
+
+    function insertStyle(){
+        var s = document.createElement('style');
+        s.innerHTML = dom.stylesheet;
+        u.elm('head')[0].appendChild(s);
+    }
 
     function renderTracks(num){
         var str = '';
         for(var i=0; i<num; i++){
             str += tmpl.track;
-            lineState.list.push(true);
+            lineState.list.push(0);
         }
-        u.elm(container).innerHTML = str;
+        u.elm(options.container)[0].innerHTML = str;
     }
 
     function renderBullet(str){
         str = u.limitBytes(str);
         return tmpl.text
+            .replace(/\{\{initTime\}\}/g, ((new Date).getMinutes()+':'+((new Date).getSeconds())))
             .replace(/\{\{trst\}\}/g, 'left 0s linear')
             .replace(/\{\{left\}\}/g, w.width+'px')
             .replace(/\{\{text\}\}/g, str);
     }
 
-    function calcAnim(){}
+    function shot(){
+        var tmpL, tmpT, maxTime = 0, minTime = Infinity, bl = u.elm(options.container+' .bulletT-text.ready'),
+            emptyTrack = lineState.getAvailTrackIndex();
+        for(var i=0; i<bl.length; i++){
+            tmpL = -1 * (bl[i].offsetWidth + options.spacing);
+            tmpT = -1*tmpL / (w.width / options.speed) + options.speed;
+            bl[i].style.cssText += 'transition-duration: ' + (tmpT / 1000).toFixed(2) + 's;';
+            bl[i].style.cssText += 'left: ' + tmpL +'px;';
+            maxTime = Math.max(maxTime, tmpT);
+            lineState.list[emptyTrack[i]] = +new Date + tmpT - options.speed;
+        }
+        u.removeClass(bl, 'ready');
+        setTimeout(clean, maxTime);
+    }
+
+    function clean(){
+        var tmp;
+        for(var i=0; i<options.lines; i++){
+            tmp = u.elm(options.container+' .bulletT-track')[i];
+            for(var j=0; j<tmp.childNodes.length; j++){
+                if(tmp.firstChild.offsetLeft + tmp.firstChild.offsetWidth < 0){
+                    tmp.firstChild.remove();
+                }else{
+                    break;
+                }
+            }
+        }
+    }
 
     var bulletText = {
         init: function(opt){
-            extendObj(options, opt);
-            w.width = u.elm(options.container).innerWidth;
+            u.extendObj(options, opt);
+            w.width = u.elm(options.container)[0].offsetWidth;
             renderTracks(options.lines);
             dom.tracks = u.elm(options.container+' .bulletT-track');
+            insertStyle();
         },
         fire: function(bullets){
             var bl2load, 
@@ -146,20 +182,13 @@
 
             // to load bullets
             for(var i=0; i<emptyTrack.length; i++){
-                dom.tracks[emptyTrack[i]].innerHTML += renderBullet(bl2load.shift());
-                lineState.list[emptyTrack[i]] = false;
+                // dom.tracks[emptyTrack[i]].innerHTML += renderBullet(bl2load.shift());
+                dom.tracks[emptyTrack[i]].appendChild(document.createDocumentFragment(renderBullet(bl2load.shift())));
             }
 
             // to fire bullets
-            setTimeout(function(){
-                var tmpL, tmpT, bl = u.elm(options.container+' .bulletT-text.ready');
-                for(var i=0; i<bl.length; i++){
-                    tmpL = -1 * bl[i].clientWidth + options.spacing;
-                    tmpT = -1*tmpL / (w.width / options.speed) + options.speed;
-                    bl[i].style.cssText += 'transition-duration: ' + (tmpT / 1000).toFixed(2) + 's; left: ' + tmpL +'px;';
-                    u.removeClass(bl[i], 'ready');
-                }
-            }, 0);
+            setTimeout(shot, 100);
+            // shot();
 
             return bl2load;
         },
