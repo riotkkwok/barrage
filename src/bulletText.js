@@ -74,7 +74,7 @@
     },
     options = {
         container: '#bulletArea',
-        lines: 1,
+        lines: 3,
         discard: true, // discard the bullet cannot be handle at the same time
         discardRule: 0, // take effect only when discard is true; 0 - first come first serve, 1 - last come first serve, 2 - random
         charLimit: 50,
@@ -159,7 +159,7 @@
             insertStyle();
         },
         fire: function(bullets){
-            var bl2load, 
+            var bl2load, tmpElm
                 emptyTrack = lineState.getAvailTrackIndex();
 
             // to filter bullets
@@ -183,12 +183,13 @@
             // to load bullets
             for(var i=0; i<emptyTrack.length; i++){
                 // dom.tracks[emptyTrack[i]].innerHTML += renderBullet(bl2load.shift());
-                dom.tracks[emptyTrack[i]].appendChild(document.createDocumentFragment(renderBullet(bl2load.shift())));
+                tmpElm = dom.tracks[emptyTrack[i]].appendChild(document.createElement('div'));
+                tmpElm.outerHTML = renderBullet(bl2load.shift());
             }
 
             // to fire bullets
-            setTimeout(shot, 100);
-            // shot();
+            // setTimeout(shot, 100);
+            shot();
 
             return bl2load;
         },
