@@ -69,8 +69,7 @@
     },
     tmpl = {
         track: '<div class="bulletT-track"></div>',
-        // text: '<span class="bulletT-text" style="margin-left:{{left}};">{{text}}</span>',
-        text: '<span class="bulletT-text ready" style="transition:{{trst}}; left:{{left}}" data-initTime="{{initTime}}">{{text}}</span>',
+        text: '<span class="bulletT-text ready" style="transition:{{trst}};" data-initTime="{{initTime}}">{{text}}</span>',
     },
     options = {
         container: '#bulletArea',
@@ -80,9 +79,13 @@
         charLimit: 50,
         speed: 5000, // ms
         spacing: 10, // px
+        clean: 20, // run clean func per X bullets
     },
     lineState = {
         list: [],
+        bulletInList: [],
+        bulletCount: 0,
+        maxTime: 0,
         getAvailTrackIndex: function(){
             var t = [];
             for(var i=0; i<this.list.length; i++){
@@ -93,8 +96,8 @@
     },
     dom = {
         tracks: [],
-        stylesheet: '.bulletT-track{position:relative;} .bulletT-text{position:absolute; white-space:nowrap; z-index: 10;}',
-    }
+        stylesheet: '.bulletT-track{position:relative;} .bulletT-text{position:absolute; left:100%; white-space:nowrap; z-index: 10;}',
+    },
     pendingBullets = [];
 
     function insertStyle(){
@@ -108,6 +111,7 @@
         for(var i=0; i<num; i++){
             str += tmpl.track;
             lineState.list.push(0);
+            lineState.bulletInList.push(0);
         }
         u.elm(options.container)[0].innerHTML = str;
     }
@@ -117,49 +121,64 @@
         return tmpl.text
             .replace(/\{\{initTime\}\}/g, ((new Date).getMinutes()+':'+((new Date).getSeconds())))
             .replace(/\{\{trst\}\}/g, 'left 0s linear')
-            .replace(/\{\{left\}\}/g, w.width+'px')
             .replace(/\{\{text\}\}/g, str);
     }
 
     function shot(){
-        var tmpL, tmpT, maxTime = 0, minTime = Infinity, bl = u.elm(options.container+' .bulletT-text.ready'),
+        var now = Date.now();
+        var tmpL, tmpT, bl = u.elm(options.container+' .bulletT-text.ready'),
+            delList = [], delCount = 0,
             emptyTrack = lineState.getAvailTrackIndex();
         for(var i=0; i<bl.length; i++){
             tmpL = -1 * (bl[i].offsetWidth + options.spacing);
+            // tmpL = -1 * (parseInt(window.getComputedStyle(bl[i],null).width, 10) + options.spacing);
             tmpT = -1*tmpL / (w.width / options.speed) + options.speed;
             bl[i].style.cssText += 'transition-duration: ' + (tmpT / 1000).toFixed(2) + 's;';
             bl[i].style.cssText += 'left: ' + tmpL +'px;';
-            maxTime = Math.max(maxTime, tmpT);
+            lineState.maxTime = Math.max(lineState.maxTime, tmpT);
             lineState.list[emptyTrack[i]] = +new Date + tmpT - options.speed;
-        }
-        u.removeClass(bl, 'ready');
-        setTimeout(clean, maxTime);
-    }
-
-    function clean(){
-        var tmp;
-        for(var i=0; i<options.lines; i++){
-            tmp = u.elm(options.container+' .bulletT-track')[i];
-            for(var j=0; j<tmp.childNodes.length; j++){
-                if(tmp.firstChild.offsetLeft + tmp.firstChild.offsetWidth < 0){
-                    tmp.firstChild.remove();
-                }else{
-                    break;
+            lineState.bulletCount++;
+            lineState.bulletInList[emptyTrack[i]]++;
+            if(lineState.bulletCount >= options.clean){
+                delCount = lineState.bulletCount;
+                delList = delList.concat(lineState.bulletInList);
+                clean(delCount, delList, lineState.maxTime);
+                lineState.maxTime = 0;
+                lineState.bulletCount = 0;
+                for(var j=0; j<lineState.bulletInList.length; j++){
+                    lineState.bulletInList[j] = 0;
                 }
             }
         }
+        u.removeClass(bl, 'ready');
+        tmpL = tmpT = bl = delList = delCount = null;
+        console.log(Date.now() - now);
+    }
+
+    function clean(count, list, time){ // TODO - to optimize
+        setTimeout(function(){
+            var tmp;
+            for(var i=0; i<options.lines; i++){
+                tmp = dom.tracks[i].children;
+                for(var j=list[i]-1; j>=0; j--){
+                    tmp[j].remove();
+                }
+            }
+            list = null;
+        }, time);
     }
 
     var bulletText = {
         init: function(opt){
             u.extendObj(options, opt);
             w.width = u.elm(options.container)[0].offsetWidth;
+            // w.width = parseInt(window.getComputedStyle(u.elm(options.container)[0],null).width, 10);
             renderTracks(options.lines);
             dom.tracks = u.elm(options.container+' .bulletT-track');
             insertStyle();
         },
         fire: function(bullets){
-            var bl2load, tmpElm
+            var bl2load, tmpElm,
                 emptyTrack = lineState.getAvailTrackIndex();
 
             // to filter bullets
@@ -182,13 +201,11 @@
 
             // to load bullets
             for(var i=0; i<emptyTrack.length; i++){
-                // dom.tracks[emptyTrack[i]].innerHTML += renderBullet(bl2load.shift());
                 tmpElm = dom.tracks[emptyTrack[i]].appendChild(document.createElement('div'));
                 tmpElm.outerHTML = renderBullet(bl2load.shift());
             }
 
             // to fire bullets
-            // setTimeout(shot, 100);
             shot();
 
             return bl2load;
