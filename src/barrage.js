@@ -168,7 +168,7 @@
         }, time);
     }
 
-    var bulletText = {
+    var barrage = {
         init: function(opt){
             u.extendObj(options, opt);
             w.width = u.elm(options.container)[0].offsetWidth;
@@ -213,8 +213,8 @@
     };
 
     if(typeof define != 'undefined' && define.amd){
-        return bulletText;
+        return barrage;
     } else {
-        window.bulletText = bulletText;
+        window.barrage = barrage;
     }
 });
