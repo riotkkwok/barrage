@@ -1,4 +1,16 @@
-!function(factory){
+/*
+ * barrage.js - a widget to show barrage.
+ *
+ * Released under the MIT license
+ *
+ * See https://github.com/riotkkwok/barrage for details
+ *
+ * Auther: Rio Kwok
+ *
+ * Version: 1.0.0
+ *
+ */
+ !function(factory){
     if(typeof define === 'function' && define.amd){
         // AMD
         define(factory);
