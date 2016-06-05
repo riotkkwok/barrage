@@ -128,7 +128,7 @@
         setIdleTime: function(listIndex, time){
             this.list[listIndex] = +new Date + time;
             if(!options.discard){
-                setTimeout(this.idleHandler, time);
+                setTimeout(this.idleHandler, time+10); // addition 10ms to avoid timer calculation mistake
             }
         },
         idleHandler: function(){
@@ -172,7 +172,7 @@
         var now = Date.now();
         var tmpL, tmpT, bl = u.elm(options.container+' .bulletT-text.ready'),
             delList = [], delCount = 0,
-            emptyTrack = lineState.getIdleTrackIndex();
+            idleTrack = lineState.getIdleTrackIndex();
         for(var i=0; i<bl.length; i++){
             tmpL = -1 * (bl[i].offsetWidth + options.spacing);
             // tmpL = -1 * (parseInt(window.getComputedStyle(bl[i],null).width, 10) + options.spacing);
@@ -180,9 +180,9 @@
             bl[i].style.cssText += 'transition-duration: ' + (tmpT / 1000).toFixed(2) + 's;';
             bl[i].style.cssText += 'left: ' + tmpL +'px;';
             lineState.maxTime = Math.max(lineState.maxTime, tmpT);
-            lineState.setIdleTime(emptyTrack[i], tmpT - options.speed);
+            lineState.setIdleTime(idleTrack[i], tmpT - options.speed);
             lineState.bulletCount++;
-            lineState.bulletInList[emptyTrack[i]]++;
+            lineState.bulletInList[idleTrack[i]]++;
             if(lineState.bulletCount >= options.clean){
                 delCount = lineState.bulletCount;
                 delList = delList.concat(lineState.bulletInList);
@@ -223,38 +223,43 @@
         },
         fire: function(bullets){
             var bl2load, tmpElm,
-                emptyTrack = lineState.getIdleTrackIndex();
+                idleTrack = lineState.getIdleTrackIndex();
 
             if(bullets.length === 0){
                 return;
             }
 
-            // to filter bullets
-            if(bullets.length > emptyTrack.length){
-                if(options.discard){ // to discard
+            // filter bullets
+            if(!!options.discard){ // discard redundant bullets
+                if(idleTrack.length === 0){ // no idle track
+                    return;
+                }
+                if(bullets.length > idleTrack.length){
                     if(options.discardRule === 0){
-                        bl2load = bullets.splice(0, emptyTrack.length);
+                        bl2load = bullets.splice(0, idleTrack.length);
                     }else if(options.discardRule === 1){
-                        bl2load = bullets.splice(-1*emptyTrack.length);;
+                        bl2load = bullets.splice(-1*idleTrack.length);
                     }else{
                         // TODO
                     }
-                }else{ // no discard
-                    bl2load = bullets.splice(0, emptyTrack.length);
-                    cacheList = cacheList.concat(bullets);
-                    console.log(cacheList.length);
+                }else{
+                    bl2load = [].concat(bullets);
                 }
-            }else{
-                bl2load = [].concat(bullets);
+            }else{ // cache redundant bullets
+                cacheList = cacheList.concat(bullets);
+                if(idleTrack.length === 0){ // no idle track
+                    return;
+                }
+                bl2load = cacheList.splice(0, idleTrack.length);
             }
 
-            // to load bullets
-            for(var i=0; i<emptyTrack.length; i++){
-                tmpElm = dom.tracks[emptyTrack[i]].appendChild(document.createElement('div'));
+            // load bullets
+            for(var i=0; i<idleTrack.length; i++){
+                tmpElm = dom.tracks[idleTrack[i]].appendChild(document.createElement('div'));
                 tmpElm.outerHTML = renderBullet(bl2load.shift());
             }
 
-            // to fire bullets
+            // shoot the bullets
             shot();
 
             // return bl2load;
