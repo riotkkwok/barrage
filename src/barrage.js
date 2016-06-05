@@ -84,14 +84,31 @@
         text: '<span class="bulletT-text ready" style="transition:{{trst}};" data-initTime="{{initTime}}">{{text}}</span>',
     },
     options = {
+
+        // the container selecter
         container: '#bulletArea',
+
+        // the number of lines to show bullets
         lines: 3,
-        discard: true, // discard the bullet cannot be handle at the same time
-        discardRule: 0, // take effect only when discard is true; 0 - first come first serve, 1 - last come first serve, 2 - random
+
+        // discard the bullet cannot be handle at the same time
+        discard: true, 
+
+        // take effect only when discard is true; 0 - first come first serve, 1 - last come first serve, 2 - random
+        discardRule: 0, 
+
+        // the max-length of character in the bullet
         charLimit: 50,
-        speed: 5000, // ms
-        spacing: 10, // px
-        clean: 20, // run clean func per X bullets
+
+        // ms, the duration to show each bullet in the container
+        speed: 5000, 
+
+        // px, the horizontal spacing between bullets
+        spacing: 10, 
+
+        // run clean func per X bullets
+        clean: 20, 
+
     },
     lineState = {
         list: [],
@@ -110,7 +127,7 @@
         tracks: [],
         stylesheet: '.bulletT-track{position:relative;} .bulletT-text{position:absolute; left:100%; white-space:nowrap; z-index: 10;}',
     },
-    pendingBullets = [];
+    cacheList = [];
 
     function insertStyle(){
         var s = document.createElement('style');
@@ -205,7 +222,7 @@
                     }
                 }else{ // no discard
                     bl2load = bullets.splice(0, emptyTrack.length);
-                    pendingBullets = bullets;
+                    cacheList.concat(bullets);
                 }
             }else{
                 bl2load = [].concat(bullets);
@@ -220,7 +237,7 @@
             // to fire bullets
             shot();
 
-            return bl2load;
+            // return bl2load;
         },
     };
 
