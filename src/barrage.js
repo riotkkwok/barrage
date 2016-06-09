@@ -128,7 +128,7 @@
         setIdleTime: function(listIndex, time){
             this.list[listIndex] = +new Date + time;
             if(!options.discard){
-                setTimeout(this.idleHandler, time+10); // addition 10ms to avoid timer calculation mistake
+                setTimeout(this.idleHandler, time+10); // add 10ms to avoid timer calculation mistake
             }
         },
         idleHandler: function(){
@@ -168,7 +168,7 @@
             .replace(/\{\{text\}\}/g, str);
     }
 
-    function shot(){
+    function shoot(){
         var now = Date.now();
         var tmpL, tmpT, bl = u.elm(options.container+' .bulletT-text.ready'),
             delList = [], delCount = 0,
@@ -260,7 +260,7 @@
             }
 
             // shoot the bullets
-            shot();
+            shoot();
 
             // return bl2load;
         },
