@@ -199,7 +199,7 @@
         options.debug && console.log(Date.now() - now);
     }
 
-    function clean(count, list, time){ // TODO - to optimize
+    function clean(count, list, time){
         setTimeout(function(){
             var tmp;
             for(var i=0; i<options.lines; i++){
