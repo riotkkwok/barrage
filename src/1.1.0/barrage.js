@@ -97,6 +97,9 @@
         // take effect only when discard is true; 0 - first come first serve, 1 - last come first serve, 2 - random
         discardRule: 0, 
 
+        // cache size, take effect only when discard is false, 0 or negative num - no cache
+        cacheSize: 0,
+
         // the max-length of character in the bullet
         charLimit: 50,
 
@@ -127,7 +130,7 @@
         },
         setIdleTime: function(listIndex, time){
             this.list[listIndex] = +new Date + time;
-            if(!options.discard){
+            if(!options.discard && options.cacheSize > 0){
                 setTimeout(this.idleHandler, time+10); // add 10ms to avoid timer calculation mistake
             }
         },
@@ -238,6 +241,7 @@
                     if(options.discardRule === 0){
                         bl2load = bullets.splice(0, idleTrack.length);
                     }else if(options.discardRule === 1){
+                        // TODO
                         bl2load = bullets.splice(-1*idleTrack.length);
                     }else{
                         // TODO
@@ -246,7 +250,9 @@
                     bl2load = [].concat(bullets);
                 }
             }else{ // cache redundant bullets
-                cacheList = cacheList.concat(bullets);
+                if(cacheList.length < options.cacheSize){
+                    cacheList = cacheList.concat(bullets.splice(0, options.cacheSize - cacheList.length));
+                }
                 if(idleTrack.length === 0){ // no idle track
                     return;
                 }
@@ -264,6 +270,15 @@
 
             // return bl2load;
         },
+        clear: function(){
+            // TODO
+        },
+        clearCache: function(){
+            // TODO
+        },
+        stop: function(){
+            // TODO
+        }
     };
 
     if(typeof define != 'undefined' && define.amd){
