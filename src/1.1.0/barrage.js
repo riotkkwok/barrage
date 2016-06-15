@@ -135,7 +135,7 @@
             }
         },
         idleHandler: function(){
-            if(cacheList.length > 0){
+            if(cacheList.length > 0 && !isStopped){
                 console.log(cacheList.length);
                 barrage.fire(cacheList.splice(0, cacheList.length));
             }
@@ -145,7 +145,8 @@
         tracks: [],
         stylesheet: '.bulletT-track{position:relative;} .bulletT-text{position:absolute; left:100%; white-space:nowrap; z-index: 10;}',
     },
-    cacheList = [];
+    cacheList = [],
+    isStopped = false;
 
     function insertStyle(){
         var s = document.createElement('style');
@@ -207,6 +208,9 @@
             var tmp;
             for(var i=0; i<options.lines; i++){
                 tmp = dom.tracks[i].children;
+                if(!list[i] || list[i]<=0 || tmp.length === 0 || list[i] > tmp.length){
+                    continue;
+                }
                 for(var j=list[i]-1; j>=0; j--){
                     tmp[j].remove();
                 }
@@ -228,7 +232,7 @@
             var bl2load, tmpElm,
                 idleTrack = lineState.getIdleTrackIndex();
 
-            if(bullets.length === 0){
+            if(bullets.length === 0 || isStopped){
                 return;
             }
 
@@ -241,7 +245,6 @@
                     if(options.discardRule === 0){
                         bl2load = bullets.splice(0, idleTrack.length);
                     }else if(options.discardRule === 1){
-                        // TODO
                         bl2load = bullets.splice(-1*idleTrack.length);
                     }else{
                         // TODO
@@ -252,11 +255,14 @@
             }else{ // cache redundant bullets
                 if(cacheList.length < options.cacheSize){
                     cacheList = cacheList.concat(bullets.splice(0, options.cacheSize - cacheList.length));
+                    bl2load = cacheList.splice(0, idleTrack.length);
+                }else{
+                    bl2load = bullets.splice(0, idleTrack.length);
                 }
                 if(idleTrack.length === 0){ // no idle track
+                    bl2load = null;
                     return;
                 }
-                bl2load = cacheList.splice(0, idleTrack.length);
             }
 
             // load bullets
@@ -270,14 +276,31 @@
 
             // return bl2load;
         },
-        clear: function(){
-            // TODO
+        clearAll: function(){
+            var tmp;
+            lineState.bulletCount = 0;
+            lineState.maxTime = 0;
+            for(var i=0; i<options.lines; i++){
+                lineState.bulletInList[i] = 0;
+                tmp = dom.tracks[i].children;
+                console.log(tmp.length);
+                for(var j=tmp.length-1; j>=0; j--){
+                    tmp[j].remove();
+                }
+                console.log(j);
+            }
+            cacheList = [];
+            return true;
         },
         clearCache: function(){
-            // TODO
+            cacheList = [];
+            return true;
+        },
+        resume: function(){
+            isStopped = false;
         },
         stop: function(){
-            // TODO
+            isStopped = true;
         }
     };
 
