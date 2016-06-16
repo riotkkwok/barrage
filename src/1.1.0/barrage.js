@@ -136,7 +136,6 @@
         },
         idleHandler: function(){
             if(cacheList.length > 0 && !isStopped){
-                console.log(cacheList.length);
                 barrage.fire(cacheList.splice(0, cacheList.length));
             }
         }
@@ -283,11 +282,9 @@
             for(var i=0; i<options.lines; i++){
                 lineState.bulletInList[i] = 0;
                 tmp = dom.tracks[i].children;
-                console.log(tmp.length);
                 for(var j=tmp.length-1; j>=0; j--){
                     tmp[j].remove();
                 }
-                console.log(j);
             }
             cacheList = [];
             return true;
