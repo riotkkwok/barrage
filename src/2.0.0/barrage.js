@@ -136,7 +136,7 @@
         },
         idleHandler: function(){
             if(cacheList.length > 0 && !isStopped){
-                console.log(cacheList.length);
+                options.debug && console.log('idleHandler() cacheList: '+cacheList.length);
                 barrage.fire(cacheList.splice(0, cacheList.length));
             }
         }
@@ -200,7 +200,7 @@
         }
         u.removeClass(bl, 'ready');
         tmpL = tmpT = bl = delList = delCount = null;
-        options.debug && console.log(Date.now() - now);
+        options.debug && console.log('shoot() takes: '+ (Date.now() - now));
     }
 
     function clean(count, list, time){
@@ -283,11 +283,9 @@
             for(var i=0; i<options.lines; i++){
                 lineState.bulletInList[i] = 0;
                 tmp = dom.tracks[i].children;
-                console.log(tmp.length);
                 for(var j=tmp.length-1; j>=0; j--){
                     tmp[j].remove();
                 }
-                console.log(j);
             }
             cacheList = [];
             return true;
