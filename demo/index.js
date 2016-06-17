@@ -2,11 +2,9 @@ window.onload = function(){
     var prefix = 0;
     var myBarrage = window.barrage;
     myBarrage.init({
-        lines: 3,
+        line: 3,
         discard: false,
-        cacheSize: 100,
-        mode: 1,
-        debug: true
+        cacheSize: 100
     });
     setInterval(function(){
         prefix = ++prefix % 1000;
@@ -14,13 +12,13 @@ window.onload = function(){
             prefix+"-1-ADDDLLLLLLLLL",
             prefix+"-2-很好1很长很长很长真的很长很长非常长非常长非常之长的超长的长长长",
             prefix+"-3-dddddhahahahddddd",
-            prefix+"-4-qwertyuiop",
+            prefix+"-4-qwer",
             prefix+"-5-不错aa",
             prefix+"-6-qpqpq",
-            prefix+"-7-zzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+            prefix+"-7-zzzzz",
             prefix+"-8-xyxy",
         ]);
-    }, 1000+Math.random()*2000);
+    }, 1000+Math.random()*1000);
 
     document.querySelector('#clearBtn').onclick = function(){
         myBarrage.clearAll();
