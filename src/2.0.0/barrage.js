@@ -89,16 +89,19 @@
         container: '#bulletArea',
 
         // the number of lines to show bullets
-        lines: 3,
+        // take effect only when mode is 1
+        lines: 1,
 
         // discard the bullet cannot be handle at the same time
         discard: true, 
 
-        // take effect only when discard is true; 0 - first come first serve, 1 - last come first serve, 2 - random
+        // defines the rule to discard, 0 - first come first serve, 1 - last come first serve, 2 - random
+        // takes effect only when discard is true
         discardRule: 0, 
 
-        // cache size, take effect only when discard is false, 0 or negative num - no cache
-        cacheSize: 0,
+        // cache size, 0 or negative num - no cache
+        // takes effect only when discard is false
+        cacheSize: 10,
 
         // the max-length of character in the bullet
         charLimit: 50,
@@ -113,25 +116,41 @@
         clean: 20, 
 
         // debug mode
-        debug: false || location.hash === '#debug'
+        debug: false || location.hash === '#debug',
+
+        // mandatory
+        // display mode, 1 - horizontal, 2 - vertical
+        mode: null,
+
+        // ms, the duration to show the bullets
+        // takes effect only when mode is 2
+        duration: 1000
 
     },
     lineState = {
-        list: [],
+        list: [], // the available time for each bullet line.
         bulletInList: [],
         bulletCount: 0,
         maxTime: 0,
         getIdleTrackIndex: function(){
             var t = [];
-            for(var i=0; i<this.list.length; i++){
-                this.list[i] < (+new Date) && t.push(i);
+            if(options.mode === 1){
+                for(var i=0; i<this.list.length; i++){
+                    this.list[i] < (+new Date) && t.push(i);
+                }
+            }else if(options.mode === 2){
+                t[0] = 0;
             }
             return t;
         },
         setIdleTime: function(listIndex, time){
-            this.list[listIndex] = +new Date + time;
-            if(!options.discard && options.cacheSize > 0){
-                setTimeout(this.idleHandler, time+10); // add 10ms to avoid timer calculation mistake
+            if(options.mode === 1){
+                this.list[listIndex] = +new Date + time;
+                if(!options.discard && options.cacheSize > 0){
+                    setTimeout(this.idleHandler, time+10); // add 10ms to avoid timer calculation mistake
+                }
+            }else if(options.mode === 2){
+                this.idleHandler();
             }
         },
         idleHandler: function(){
@@ -146,7 +165,8 @@
         stylesheet: '.bulletT-track{position:relative;} .bulletT-text{position:absolute; left:100%; white-space:nowrap; z-index: 10;}',
     },
     cacheList = [],
-    isStopped = false;
+    isStopped = false,
+    isInited = false;
 
     function insertStyle(){
         var s = document.createElement('style');
@@ -221,9 +241,19 @@
 
     var barrage = {
         init: function(opt){
+            if(!!isInited){
+                return;
+            }
+            if(opt.mode === 1){
+                w.width = u.elm(options.container)[0].offsetWidth;
+                // w.width = parseInt(window.getComputedStyle(u.elm(options.container)[0],null).width, 10);
+            }else if(opt.mode === 2){
+                ;
+            }else{
+                console.error('Error: mode is illegal or undefined.');
+                return;
+            }
             u.extendObj(options, opt);
-            w.width = u.elm(options.container)[0].offsetWidth;
-            // w.width = parseInt(window.getComputedStyle(u.elm(options.container)[0],null).width, 10);
             renderTracks(options.lines);
             dom.tracks = u.elm(options.container+' .bulletT-track');
             insertStyle();
