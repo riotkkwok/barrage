@@ -81,7 +81,12 @@
     },
     tmpl = {
         track: '<div class="bulletT-track"></div>',
-        text: '<span class="bulletT-text ready" style="transition:{{trst}};" data-initTime="{{initTime}}">{{text}}</span>',
+        text: {
+            // mode 1
+            '1': '<span class="bulletT-text ready" style="transition:{{trst}};" data-initTime="{{initTime}}">{{text}}</span>',
+            // mode 2
+            '2': '<span class="bulletT-text ready">{{text}}</span>'
+        }
     },
     options = {
 
@@ -159,28 +164,35 @@
                 if(options.speed <= 0){
                     setTimeout(this.idleHandler, 0);
                 }else{
-                    intervalST || (intervalST = setInterval(this.idleHandler, options.speed));
+                    this.intervalST || (this.intervalST = setInterval(this.idleHandler, options.speed));
                 }
             }
         },
         idleHandler: function(){
+            console.log(cacheList.length);
             if(cacheList.length > 0 && !isStopped){
                 options.debug && console.log('idleHandler() cacheList: '+cacheList.length);
+                isTime2Fire = true;
                 barrage.fire(cacheList.splice(0, cacheList.length));
+                isTime2Fire = false;
             }
         }
     },
     dom = {
         tracks: [],
-        stylesheet: '.bulletT-track{position:relative;} .bulletT-text{position:absolute; left:100%; white-space:nowrap; z-index: 10;}',
+        stylesheet: {
+            '1': '.bulletT-track{position:relative;} .bulletT-text{position:absolute; left:100%; white-space:nowrap; z-index: 10;}',
+            '2': '.bulletT-track{position:absolute; bottom: 0;}'
+        }
     },
     cacheList = [],
     isStopped = false,
-    isInited = false;
+    isInited = false,
+    isTime2Fire = false;
 
     function insertStyle(){
         var s = document.createElement('style');
-        s.innerHTML = dom.stylesheet;
+        s.innerHTML = dom.stylesheet[options.mode];
         u.elm('head')[0].appendChild(s);
     }
 
@@ -196,24 +208,59 @@
 
     function renderBullet(str){
         str = u.limitBytes(str);
-        return tmpl.text
-            .replace(/\{\{initTime\}\}/g, ((new Date).getMinutes()+':'+((new Date).getSeconds())))
-            .replace(/\{\{trst\}\}/g, 'left 0s linear')
-            .replace(/\{\{text\}\}/g, str);
+        if(options.mode === 1){
+            return tmpl.text['1']
+                .replace(/\{\{initTime\}\}/g, ((new Date).getMinutes()+':'+((new Date).getSeconds())))
+                .replace(/\{\{trst\}\}/g, 'left 0s linear')
+                .replace(/\{\{text\}\}/g, str);
+        }else if(options.mode === 2){
+            return tmpl.text['2'].replace(/\{\{text\}\}/g, str);
+        }else{
+            return '';
+        }
     }
 
-    function shoot(){
-        var now = Date.now();
-        var tmpL, tmpT, bl = u.elm(options.container+' .bulletT-text.ready'),
-            delList = [], delCount = 0,
-            idleTrack = lineState.getIdleTrackIndex();
-        for(var i=0; i<bl.length; i++){
+    function renderAnim(bl){
+        var tmpL, tmpT;
+        if(options.mode === 1){
             // calc the running speed and distance
             tmpL = -1 * (bl[i].offsetWidth + options.spacing);
             // tmpL = -1 * (parseInt(window.getComputedStyle(bl[i],null).width, 10) + options.spacing);
             tmpT = -1*tmpL / (w.width / options.speed) + options.speed;
             bl[i].style.cssText += 'transition-duration: ' + (tmpT / 1000).toFixed(2) + 's;';
             bl[i].style.cssText += 'left: ' + tmpL +'px;';
+        }else if(options.mode === 2){
+            ;
+        }
+    }
+
+    function load(bl, tracks){
+        var tmpElm, len = 0;
+        if(!bl || bl.length === 0){
+            return;
+        }
+
+        if(typeof tracks === 'number'){
+            len = tracks;
+        }else if(tracks instanceof Array){
+            len = tracks.length;
+        }
+
+        for(var i=0; i<len; i++){
+            if(!bl || bl.length === 0) break;
+            tmpElm = dom.tracks[tracks[i] || 0].appendChild(document.createElement('div'));
+            tmpElm.outerHTML = renderBullet(bl.shift());
+        }
+    }
+
+    function shoot(){
+        var now = Date.now();
+        var bl = u.elm(options.container+' .bulletT-text.ready'),
+            delList = [], delCount = 0,
+            idleTrack = lineState.getIdleTrackIndex();
+        for(var i=0; i<bl.length; i++){
+            // render animation
+            renderAnim(bl);
 
             // calc idle time
             lineState.maxTime = Math.max(lineState.maxTime, tmpT);
@@ -263,7 +310,7 @@
                 w.width = u.elm(options.container)[0].offsetWidth;
                 // w.width = parseInt(window.getComputedStyle(u.elm(options.container)[0],null).width, 10);
             }else if(opt.mode === 2){
-                ;
+                opt.lines != undefined && (opt.lines = 1);
             }else{
                 console.error('Error: mode is illegal or undefined.');
                 return;
@@ -272,9 +319,13 @@
             renderTracks(options.lines);
             dom.tracks = u.elm(options.container+' .bulletT-track');
             insertStyle();
+            if(options.mode === 2){
+                lineState.setIdleTime();
+            }
+            isInited = true;
         },
         fire: function(bullets){
-            var bl2load, tmpElm,
+            var bl2load, 
                 idleTrack = lineState.getIdleTrackIndex();
 
             if(bullets.length === 0 || isStopped){
@@ -311,6 +362,7 @@
                         options.debug && console.log('Illegal value of discard and speed while mode is 2.');
                         return;
                     }
+                    idleTrack = options.maxNum;
                 }
             }else{ // cache redundant bullets
                 if(options.mode === 1){
@@ -326,21 +378,18 @@
                         return;
                     }
                 }else if(options.mode === 2){
-                    if(options.speed <= 0){
+                    if(options.speed <= 0 || !!isTime2Fire){
                         bl2load = bullets.splice(0, options.maxNum);
                         cacheList = bullets.splice(0, options.cacheSize - cacheList.length);
                     }else{
                         cacheList = bullets.splice(0, options.cacheSize - cacheList.length);
                     }
+                    idleTrack = options.maxNum;
                 }
             }
 
             // load bullets
-            for(var i=0; i<idleTrack.length; i++){
-                if(bl2load.length === 0) break;
-                tmpElm = dom.tracks[idleTrack[i]].appendChild(document.createElement('div'));
-                tmpElm.outerHTML = renderBullet(bl2load.shift());
-            }
+            load(bl2load, idleTrack);
 
             // shoot the bullets
             shoot();
