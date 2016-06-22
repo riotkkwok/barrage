@@ -124,7 +124,11 @@
 
         // the maximum number of bullets to show per time
         // takes effect only when mode is 2
-        maxNum: 1,
+        maxShot: 1,
+
+        // the maximum number of bullets to show on screen
+        // takes effect only when mode is 2
+        screenSize: 10,
 
         // px, the horizontal spacing between bullets
         // takes effect only when mode is 1
@@ -181,8 +185,10 @@
     dom = {
         tracks: [],
         stylesheet: {
+            // mode 1
             '1': '.bulletT-track{position:relative;} .bulletT-text{position:absolute; left:100%; white-space:nowrap; z-index: 10;}',
-            '2': '.bulletT-track{position:absolute; bottom: 0;}'
+            // mode 2
+            '2': '.bulletT-track{position:absolute; bottom: 0;} .bulletT-text.ready{display: none;}'
         }
     },
     cacheList = [],
@@ -220,18 +226,19 @@
         }
     }
 
-    function renderAnim(bl){
+    function renderAnim(elm){
         var tmpL, tmpT;
         if(options.mode === 1){
             // calc the running speed and distance
-            tmpL = -1 * (bl[i].offsetWidth + options.spacing);
-            // tmpL = -1 * (parseInt(window.getComputedStyle(bl[i],null).width, 10) + options.spacing);
+            tmpL = -1 * (elm.offsetWidth + options.spacing);
+            // tmpL = -1 * (parseInt(window.getComputedStyle(elm,null).width, 10) + options.spacing);
             tmpT = -1*tmpL / (w.width / options.speed) + options.speed;
-            bl[i].style.cssText += 'transition-duration: ' + (tmpT / 1000).toFixed(2) + 's;';
-            bl[i].style.cssText += 'left: ' + tmpL +'px;';
+            elm.style.cssText += 'transition-duration: ' + (tmpT / 1000).toFixed(2) + 's;';
+            elm.style.cssText += 'left: ' + tmpL +'px;';
         }else if(options.mode === 2){
             ;
         }
+        return tmpT || 0;
     }
 
     function load(bl, tracks){
@@ -255,29 +262,40 @@
 
     function shoot(){
         var now = Date.now();
-        var bl = u.elm(options.container+' .bulletT-text.ready'),
+        var tmpT, bl = u.elm(options.container+' .bulletT-text.ready'),
             delList = [], delCount = 0,
             idleTrack = lineState.getIdleTrackIndex();
         for(var i=0; i<bl.length; i++){
             // render animation
-            renderAnim(bl);
+            tmpT = renderAnim(bl[i]);
 
-            // calc idle time
-            lineState.maxTime = Math.max(lineState.maxTime, tmpT);
-            lineState.setIdleTime(idleTrack[i], tmpT - options.speed);
+            if(options.mode === 1){
+                // calc idle time
+                lineState.maxTime = Math.max(lineState.maxTime, tmpT);
+                lineState.setIdleTime(idleTrack[i], tmpT - options.speed);
 
-            // calc the bullet to be cleaned
-            lineState.bulletCount++;
-            lineState.bulletInList[idleTrack[i]]++;
-            if(lineState.bulletCount >= options.clean){
-                delCount = lineState.bulletCount;
-                delList = delList.concat(lineState.bulletInList);
-                clean(delCount, delList, lineState.maxTime);
-                lineState.maxTime = 0;
-                lineState.bulletCount = 0;
-                for(var j=0; j<lineState.bulletInList.length; j++){
-                    lineState.bulletInList[j] = 0;
+                // calc the bullet to be cleaned
+                lineState.bulletCount++;
+                lineState.bulletInList[idleTrack[i]]++;
+                if(lineState.bulletCount >= options.clean){
+                    delCount = lineState.bulletCount;
+                    delList = delList.concat(lineState.bulletInList);
+                    clean(delList, lineState.maxTime);
+                    lineState.maxTime = 0;
+                    lineState.bulletCount = 0;
+                    for(var j=0; j<lineState.bulletInList.length; j++){
+                        lineState.bulletInList[j] = 0;
+                    }
                 }
+            }
+        }
+        if(options.mode === 2){
+            // calc the bullet to be cleaned
+            lineState.bulletInList[0] = lineState.bulletCount = u.elm(options.container+' .bulletT-text').length - options.screenSize;
+            delList = delList.concat(lineState.bulletInList);
+            if(lineState.bulletCount > 0){
+                clean(delList, 0);
+                lineState.bulletInList[0] = lineState.bulletCount = 0;
             }
         }
         u.removeClass(bl, 'ready');
@@ -285,7 +303,7 @@
         options.debug && console.log('shoot() takes: '+ (Date.now() - now)+' ms');
     }
 
-    function clean(count, list, time){
+    function clean(list, time){
         setTimeout(function(){
             var tmp;
             for(var i=0; i<options.lines; i++){
@@ -352,9 +370,9 @@
                 }else if(options.mode === 2){
                     if(options.speed <= 0){
                         if(options.discardRule === 0){
-                            bl2load = bullets.splice(0, options.maxNum);
+                            bl2load = bullets.splice(0, options.maxShot);
                         }else if(options.discardRule === 1){
-                            bl2load = bullets.splice(-1*options.maxNum);
+                            bl2load = bullets.splice(-1*options.maxShot);
                         }else{
                             // TODO
                         }
@@ -362,7 +380,7 @@
                         options.debug && console.log('Illegal value of discard and speed while mode is 2.');
                         return;
                     }
-                    idleTrack = options.maxNum;
+                    idleTrack = options.maxShot;
                 }
             }else{ // cache redundant bullets
                 if(options.mode === 1){
@@ -379,12 +397,12 @@
                     }
                 }else if(options.mode === 2){
                     if(options.speed <= 0 || !!isTime2Fire){
-                        bl2load = bullets.splice(0, options.maxNum);
-                        cacheList = bullets.splice(0, options.cacheSize - cacheList.length);
+                        bl2load = bullets.splice(0, options.maxShot);
+                        cacheList = cacheList.concat(bullets.splice(0, options.cacheSize - cacheList.length));
                     }else{
-                        cacheList = bullets.splice(0, options.cacheSize - cacheList.length);
+                        cacheList = cacheList.concat(bullets.splice(0, options.cacheSize - cacheList.length));
                     }
-                    idleTrack = options.maxNum;
+                    idleTrack = options.maxShot;
                 }
             }
 
