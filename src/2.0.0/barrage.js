@@ -173,7 +173,6 @@
             }
         },
         idleHandler: function(){
-            console.log(cacheList.length);
             if(cacheList.length > 0 && !isStopped){
                 options.debug && console.log('idleHandler() cacheList: '+cacheList.length);
                 isTime2Fire = true;
@@ -363,6 +362,7 @@
                             bl2load = bullets.splice(-1*idleTrack.length);
                         }else{
                             // TODO
+                            console.error('Error: discardRule is illegal or undefined.');
                         }
                     }else{
                         bl2load = [].concat(bullets);
@@ -375,6 +375,7 @@
                             bl2load = bullets.splice(-1*options.maxShot);
                         }else{
                             // TODO
+                            console.error('Error: discardRule is illegal or undefined.');
                         }
                     }else{ 
                         options.debug && console.log('Illegal value of discard and speed while mode is 2.');
@@ -411,8 +412,6 @@
 
             // shoot the bullets
             shoot();
-
-            // return bl2load;
         },
         clearAll: function(){
             var tmp;
