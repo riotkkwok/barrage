@@ -323,16 +323,16 @@
             if(!!isInited){
                 return;
             }
-            if(opt.mode === 1){
+            u.extendObj(options, opt);
+            if(options.mode === 1){
                 w.width = u.elm(options.container)[0].offsetWidth;
                 // w.width = parseInt(window.getComputedStyle(u.elm(options.container)[0],null).width, 10);
-            }else if(opt.mode === 2){
-                opt.lines != undefined && (opt.lines = 1);
+            }else if(options.mode === 2){
+                options.lines != undefined && (options.lines = 1);
             }else{
                 console.error('Error: mode is illegal or undefined.');
                 return;
             }
-            u.extendObj(options, opt);
             renderTracks(options.lines);
             dom.tracks = u.elm(options.container+' .bulletT-track');
             insertStyle();
