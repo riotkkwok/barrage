@@ -7,7 +7,7 @@
  *
  * Auther: Rio Kwok
  *
- * Version: 2.0.1
+ * Version: 2.1.0
  *
  */
  !function(factory){
@@ -137,6 +137,9 @@
         // run clean func per X bullets
         clean: 20, 
 
+        // render tracks callback function
+        onRendered: null,
+
         // debug mode
         debug: false || location.hash === '#debug'
 
@@ -174,7 +177,7 @@
         },
         idleHandler: function(){
             if(cacheList.length > 0 && !isStopped){
-                options.debug && console.log('idleHandler() cacheList: '+cacheList.length);
+                options.debug && console.debug('idleHandler() cacheList: '+cacheList.length);
                 isTime2Fire = true;
                 barrage.fire(cacheList.splice(0, cacheList.length));
                 isTime2Fire = false;
@@ -192,7 +195,6 @@
     },
     cacheList = [],
     isStopped = false,
-    isInited = false,
     isTime2Fire = false;
 
     function insertStyle(){
@@ -209,17 +211,27 @@
             lineState.bulletInList.push(0);
         }
         u.elm(options.container)[0].innerHTML = str;
+        if(typeof options.onRendered === 'function'){
+            setTimeout(function(){
+                options.onRendered.call(barrage);
+            }, 0);
+        }
     }
 
     function renderBullet(str){
-        str = u.limitBytes(str);
+        var tmpStr;
+        if(typeof str === 'object' && str.text instanceof Array){
+            tmpStr = str.text.join('');
+        }else{
+            tmpStr = u.limitBytes(str);
+        }
         if(options.mode === 1){
             return tmpl.text['1']
                 .replace(/\{\{initTime\}\}/g, ((new Date).getMinutes()+':'+((new Date).getSeconds())))
                 .replace(/\{\{trst\}\}/g, 'left 0s linear')
-                .replace(/\{\{text\}\}/g, str);
+                .replace(/\{\{text\}\}/g, tmpStr);
         }else if(options.mode === 2){
-            return tmpl.text['2'].replace(/\{\{text\}\}/g, str);
+            return tmpl.text['2'].replace(/\{\{text\}\}/g, tmpStr);
         }else{
             return '';
         }
@@ -238,6 +250,61 @@
             ;
         }
         return tmpT || 0;
+    }
+
+    function assemble(bl){
+        var time = Date.now(), result = [], tmp;
+        var Bullet = function(text, time, pri){
+            this.text = text;
+            this.time = time;
+            this.pri = pri || 0;
+        };
+
+        for(var i=0; i<bl.length; i++){
+            if(typeof bl[i] === 'object'){
+                if(bl[i] instanceof Bullet){
+                    tmp = bl[i];
+                }else{
+                    tmp = new Bullet(bl[i].text, time, bl[i].pri);
+                }
+            }else if(typeof bl[i] === 'string'){
+                tmp = new Bullet(bl[i], time);
+            }else{
+                continue;
+            }
+            result.push(tmp);
+        }
+        return result;
+    }
+
+    function adjustCacheByPri(remainLs){
+        var all = cacheList.concat(remainLs);
+
+        /* sort by time */
+        function sortByTime(a, b){
+            if(a.time < b.time){
+                return -1;
+            }else if(a.time > b.time){
+                return 1;
+            }else{
+                return 0;
+            }
+        }
+
+        /* sort by priority */
+        function sortByPri(a, b){
+            if(a.pri < b.pri){
+                return 1;
+            }else if(a.pri > b.pri){
+                return -1;
+            }else{
+                return 0;
+            }
+        }
+
+        all.sort(sortByPri);
+        cacheList = all.splice(0, cacheList.length);
+        cacheList.sort(sortByTime);
     }
 
     function load(bl, tracks){
@@ -298,8 +365,8 @@
             }
         }
         u.removeClass(bl, 'ready');
-        tmpL = tmpT = bl = delList = delCount = null;
-        options.debug && console.log('shoot() takes: '+ (Date.now() - now)+' ms');
+        tmpT = bl = delList = delCount = null;
+        options.debug && console.debug('shoot() takes: '+ (Date.now() - now)+' ms');
     }
 
     function clean(list, time){
@@ -319,8 +386,9 @@
     }
 
     var barrage = {
+		isInited: false,
         init: function(opt){
-            if(!!isInited){
+            if(!!this.isInited){
                 return;
             }
             u.extendObj(options, opt);
@@ -339,8 +407,17 @@
             if(options.mode === 2){
                 lineState.setIdleTime();
             }
-            isInited = true;
+            this.isInited = true;
         },
+        /*
+         * fire bullet function
+         * bullets -- (array), the elements in it can be
+         *      1. bullet text (string)
+         *      2. bullet object (object)
+         *          - text: text content (string / array)，there is words limitation checking if it is a string.
+         *          - pri: priority (number)
+         *
+         */
         fire: function(bullets){
             var bl2load, 
                 idleTrack = lineState.getIdleTrackIndex();
@@ -348,6 +425,8 @@
             if(bullets.length === 0 || isStopped){
                 return;
             }
+
+            bullets = assemble(bullets);
 
             // filter bullets
             if(!!options.discard){ // discard redundant bullets
@@ -378,7 +457,7 @@
                             console.error('Error: discardRule is illegal or undefined.');
                         }
                     }else{ 
-                        options.debug && console.log('Illegal value of discard and speed while mode is 2.');
+                        options.debug && console.debug('Illegal value of discard and speed while mode is 2.');
                         return;
                     }
                     idleTrack = options.maxShot;
@@ -398,10 +477,14 @@
                     }
                 }else if(options.mode === 2){
                     if(options.speed <= 0 || !!isTime2Fire){
+                        // TODO - wrong logic
                         bl2load = bullets.splice(0, options.maxShot);
                         cacheList = cacheList.concat(bullets.splice(0, options.cacheSize - cacheList.length));
                     }else{
                         cacheList = cacheList.concat(bullets.splice(0, options.cacheSize - cacheList.length));
+                    }
+                    if(bullets.length > 0){
+                        adjustCacheByPri(bullets);
                     }
                     idleTrack = options.maxShot;
                 }
